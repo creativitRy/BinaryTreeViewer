@@ -23,11 +23,6 @@ public class BinaryTreeViewer {
     public static final double HEIGHT = 20;
     public static final double MAX_HEIGHT_SEPARATION = 80;
     
-    // instance variable names to extract data from
-    private String dataName;
-    private String leftChildName;
-    private String rightChildName;
-    
     // functions to call to extract data
     private Function<Object, Object> getData;
     private Function<Object, Object> getLeft;
@@ -82,13 +77,9 @@ public class BinaryTreeViewer {
      * right child is parsed from the instance variable {@code rightChildName}
      */
     public BinaryTreeViewer(String dataName, String leftChildName, String rightChildName) {
-        this.dataName = dataName;
-        this.leftChildName = leftChildName;
-        this.rightChildName = rightChildName;
-        
-        getData = this::getDataValue;
-        getLeft = this::getLeftValue;
-        getRight = this::getRightValue;
+        setDataVariable(dataName);
+        setLeftChildVariable(leftChildName);
+        setRightChildVariable(rightChildName);
     }
     
     /**
@@ -147,6 +138,82 @@ public class BinaryTreeViewer {
         panel.removeAll();
         panel.add(new JLabel(new ImageIcon(image)));
         return (Graphics2D) image.getGraphics();
+    }
+    
+    /**
+     * Draws the edges and the nodes of the tree
+     * @param g        graphics to draw to
+     * @param width    width of graphics
+     * @param height   height of graphics
+     * @param rootNode root node of tree
+     */
+    private void drawTree(Graphics2D g, int width, int height, Object rootNode) {
+        // calculate spacing
+        TreeMap<Fraction, DrawableNode> nodes = new TreeMap<>();
+        int maxDepth = parseTree(nodes, rootNode, new Fraction(0, 1), new Fraction(2048, 1),
+            1, null, g);
+        System.out.println(nodes);
+        double offsetX = 0;
+        double startX = 0;
+        double deltaX = (nodes.size() > 20) ? 1 : 1.5;
+        int middle = nodes.size() / 2;
+        for (Map.Entry<Fraction, DrawableNode> entry : nodes.entrySet()) {
+            entry.getValue().setX(startX);
+            if (middle == 0)
+                offsetX = width / 2 - startX;
+            middle--;
+            startX += entry.getValue().getWidth() * deltaX;
+        }
+        
+        double deltaY = Math.min(height / (maxDepth + 1), MAX_HEIGHT_SEPARATION);
+        
+        // draw edges
+        g.setColor(Color.BLACK);
+        for (Map.Entry<Fraction, DrawableNode> entry : nodes.entrySet()) {
+            DrawableNode to = entry.getValue();
+            DrawableNode from = to.getFrom();
+            if (from != null) {
+                g.draw(new Line2D.Double(to.getX() + offsetX, to.getY(deltaY), from.getX() + offsetX,
+                    from.getY(deltaY)));
+            }
+        }
+        
+        // draw nodes
+        for (Map.Entry<Fraction, DrawableNode> entry : nodes.entrySet()) {
+            entry.getValue().drawNode(g, offsetX, deltaY);
+        }
+    }
+    
+    /**
+     * Helper method to order nodes from left to right to figure out spacing
+     * @param nodes  nodes sorted by order from left to right
+     * @param node   current node being sorted
+     * @param center position where the node will be added
+     * @param delta  x distance from this to children
+     * @param depth  depth of current node in tree
+     * @param from   parent node
+     * @param g      graphics to calculate width of data
+     * @return maximum depth
+     */
+    private int parseTree(TreeMap<Fraction, DrawableNode> nodes, Object node, Fraction center,
+                          Fraction delta, int depth, DrawableNode from, Graphics2D g) {
+        if (node == null)
+            return depth;
+        DrawableNode drawableNode = new DrawableNode(depth, getData.apply(node), from, g);
+        nodes.put(center, drawableNode);
+        Object left = getLeft.apply(node);
+        Fraction nextDelta = delta.divide(2);
+        int maxDepth = depth;
+        if (left != null) {
+            maxDepth = parseTree(nodes, left, center.subtract(delta), nextDelta, depth + 1,
+                drawableNode, g);
+        }
+        Object right = getRight.apply(node);
+        if (right != null) {
+            maxDepth = Math.max(maxDepth, parseTree(nodes, right, center.add(delta), nextDelta,
+                depth + 1, drawableNode, g));
+        }
+        return maxDepth;
     }
     
     /**
@@ -359,223 +426,207 @@ public class BinaryTreeViewer {
     }
     
     /**
-     * Draws the edges and the nodes of the tree
-     * @param g        graphics to draw to
-     * @param width    width of graphics
-     * @param height   height of graphics
-     * @param rootNode root node of tree
+     * Use this method if you want this to get the data from an instance variable (which
+     * can be private)
+     * @param variableName name of variable to get in the node class
+     * @return this for chaining
      */
-    private void drawTree(Graphics2D g, int width, int height, Object rootNode) {
-        // calculate spacing
-        TreeMap<Fraction, DrawableNode> nodes = new TreeMap<>();
-        int maxDepth = parseTree(nodes, rootNode, new Fraction(0, 1), new Fraction(2048, 1),
-            1, null, g);
-        System.out.println(nodes);
-        double offsetX = 0;
-        double startX = 0;
-        double deltaX = (nodes.size() > 20) ? 1 : 1.5;
-        int middle = nodes.size() / 2;
-        for (Map.Entry<Fraction, DrawableNode> entry : nodes.entrySet()) {
-            entry.getValue().setX(startX);
-            if (middle == 0)
-                offsetX = width / 2 - startX;
-            middle--;
-            startX += entry.getValue().getWidth() * deltaX;
-        }
-        
-        double deltaY = Math.min(height / (maxDepth + 1), MAX_HEIGHT_SEPARATION);
-        
-        // draw edges
-        g.setColor(Color.BLACK);
-        for (Map.Entry<Fraction, DrawableNode> entry : nodes.entrySet()) {
-            DrawableNode to = entry.getValue();
-            DrawableNode from = to.getFrom();
-            if (from != null) {
-                g.draw(new Line2D.Double(to.getX() + offsetX, to.getY(deltaY), from.getX() + offsetX,
-                    from.getY(deltaY)));
+    public BinaryTreeViewer setDataVariable(String variableName) {
+        setDataFunction(new ValueFunction(variableName) {
+            @Override
+            public Object apply(Object o) {
+                try {
+                    Field data = o.getClass().getDeclaredField(getValue());
+                    data.setAccessible(true);
+                    return data.get(o);
+                    
+                }
+                catch (NoSuchFieldException | IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+                throw new IllegalArgumentException("Exception when accessing data of node. Make sure data variable name "
+                    + getValue() + " is spelled correctly.");
             }
-        }
-        
-        // draw nodes
-        for (Map.Entry<Fraction, DrawableNode> entry : nodes.entrySet()) {
-            entry.getValue().drawNode(g, offsetX, deltaY);
-        }
-    }
-    
-    /**
-     * Helper method to order nodes from left to right to figure out spacing
-     * @param nodes  nodes sorted by order from left to right
-     * @param node   current node being sorted
-     * @param center position where the node will be added
-     * @param delta  x distance from this to children
-     * @param depth  depth of current node in tree
-     * @param from   parent node
-     * @param g      graphics to calculate width of data
-     * @return maximum depth
-     */
-    private int parseTree(TreeMap<Fraction, DrawableNode> nodes, Object node, Fraction center,
-                          Fraction delta, int depth, DrawableNode from, Graphics2D g) {
-        if (node == null)
-            return depth;
-        DrawableNode drawableNode = new DrawableNode(depth, getData.apply(node), from, g);
-        nodes.put(center, drawableNode);
-        Object left = getLeft.apply(node);
-        Fraction nextDelta = delta.divide(2);
-        int maxDepth = depth;
-        if (left != null) {
-            maxDepth = parseTree(nodes, left, center.subtract(delta), nextDelta, depth + 1,
-                drawableNode, g);
-        }
-        Object right = getRight.apply(node);
-        if (right != null) {
-            maxDepth = Math.max(maxDepth, parseTree(nodes, right, center.add(delta), nextDelta,
-                depth + 1, drawableNode, g));
-        }
-        return maxDepth;
+        });
+        return this;
     }
     
     /**
      * Use this method if you want this to get the data from a method. The method must
      * return the data and not take any parameters
      * @param methodName name of method to call in the node class
+     * @return this for chaining
      */
-    public void setDataMethod(final String methodName) {
-        setDataMethod(o -> {
-            try {
-                Method method = o.getClass().getDeclaredMethod(methodName);
-                method.setAccessible(true);
-                return method.invoke(o);
+    public BinaryTreeViewer setDataMethod(String methodName) {
+        methodName = methodName.replaceAll("[()]", "");
+        setDataFunction(new ValueFunction(methodName) {
+            @Override
+            public Object apply(Object o) {
+                try {
+                    Method method = o.getClass().getDeclaredMethod(getValue());
+                    method.setAccessible(true);
+                    return method.invoke(o);
+                }
+                catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+                throw new IllegalArgumentException("Exception when accessing method. Make sure the method name "
+                    + getValue() + " is spelled correctly, has no parameters, and returns an object.");
             }
-            catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
-            }
-            throw new IllegalArgumentException("Exception when accessing method. Make sure the method name "
-                + methodName + " is spelled correctly, has no parameters, and returns an object.");
         });
+        return this;
     }
     
     /**
      * Use this method if you want this to get the data from a function. The function
      * passes in a node and expects its data
      * @param getData function to use when extracting data
+     * @return this for chaining
      */
-    public void setDataMethod(Function<Object, Object> getData) {
+    public BinaryTreeViewer setDataFunction(Function<Object, Object> getData) {
         this.getData = getData;
+        return this;
+    }
+    
+    /**
+     * Use this method if you want this to get the left child from an instance variable
+     * (which can be private)
+     * @param variableName name of variable to get in the node class
+     * @return this for chaining
+     */
+    public BinaryTreeViewer setLeftChildVariable(String variableName) {
+        setLeftChildFunction(new ValueFunction(variableName) {
+            @Override
+            public Object apply(Object o) {
+                try {
+                    Field left = o.getClass().getDeclaredField(getValue());
+                    left.setAccessible(true);
+                    return left.get(o);
+                    
+                }
+                catch (NoSuchFieldException | IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+                throw new IllegalArgumentException("Exception when accessing data of node. Make sure left child variable name "
+                    + getValue() + " is spelled correctly.");
+            }
+        });
+        return this;
     }
     
     /**
      * Use this method if you want this to get the left child from a method. The method
      * must return the left child node and not take any parameters
      * @param methodName name of method to call in the node class
+     * @return this for chaining
      */
-    public void setLeftChildMethod(final String methodName) {
-        setLeftChildMethod(o -> {
-            try {
-                Method method = o.getClass().getDeclaredMethod(methodName);
-                method.setAccessible(true);
-                return method.invoke(o);
+    public BinaryTreeViewer setLeftChildMethod(String methodName) {
+        methodName = methodName.replaceAll("[()]", "");
+        setLeftChildFunction(new ValueFunction(methodName) {
+            @Override
+            public Object apply(Object o) {
+                try {
+                    Method method = o.getClass().getDeclaredMethod(getValue());
+                    method.setAccessible(true);
+                    return method.invoke(o);
+                }
+                catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+                throw new IllegalArgumentException("Exception when accessing method. Make sure the method name "
+                    + getValue() + " is spelled correctly, has no parameters, and returns an object.");
             }
-            catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
-            }
-            throw new IllegalArgumentException("Exception when accessing method. Make sure the method name "
-                + methodName + " is spelled correctly, has no parameters, and returns an object.");
         });
+        return this;
     }
     
     /**
      * Use this method if you want this to get the left child from a function. The
      * function passes in a node and expects its left child node
      * @param getLeft function to use when extracting left child node
+     * @return this for chaining
      */
-    public void setLeftChildMethod(Function<Object, Object> getLeft) {
+    public BinaryTreeViewer setLeftChildFunction(Function<Object, Object> getLeft) {
         this.getLeft = getLeft;
+        return this;
+    }
+    
+    /**
+     * Use this method if you want this to get the right child from an instance variable
+     * (which can be private)
+     * @param variableName name of variable to get in the node class
+     * @return this for chaining
+     */
+    public BinaryTreeViewer setRightChildVariable(String variableName) {
+        setRightChildFunction(new ValueFunction(variableName) {
+            @Override
+            public Object apply(Object o) {
+                try {
+                    Field right = o.getClass().getDeclaredField(getValue());
+                    right.setAccessible(true);
+                    return right.get(o);
+                    
+                }
+                catch (NoSuchFieldException | IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+                throw new IllegalArgumentException("Exception when accessing data of node. Make sure right child variable name "
+                    + getValue() + " is spelled correctly.");
+            }
+        });
+        return this;
     }
     
     /**
      * Use this method if you want this to get the right child from a method. The method
      * must return the right child node and not take any parameters
      * @param methodName name of method to call in the node class
+     * @return this for chaining
      */
-    public void setRightChildMethod(final String methodName) {
-        setRightChildMethod(o -> {
-            try {
-                Method method = o.getClass().getDeclaredMethod(methodName);
-                method.setAccessible(true);
-                return method.invoke(o);
+    public BinaryTreeViewer setRightChildMethod(String methodName) {
+        methodName = methodName.replaceAll("[()]", "");
+        setRightChildFunction(new ValueFunction(methodName) {
+            @Override
+            public Object apply(Object o) {
+                try {
+                    Method method = o.getClass().getDeclaredMethod(getValue());
+                    method.setAccessible(true);
+                    return method.invoke(o);
+                }
+                catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+                throw new IllegalArgumentException("Exception when accessing method. Make sure the method name "
+                    + getValue() + " is spelled correctly, has no parameters, and returns an object.");
             }
-            catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
-            }
-            throw new IllegalArgumentException("Exception when accessing method. Make sure the method name "
-                + methodName + " is spelled correctly, has no parameters, and returns an object.");
         });
+        return this;
     }
     
     /**
      * Use this method if you want this to get the right child from a function. The
      * function passes in a node and expects its right child node
      * @param getRight function to use when extracting right child node
+     * @return this for chaining
      */
-    public void setRightChildMethod(Function<Object, Object> getRight) {
+    public BinaryTreeViewer setRightChildFunction(Function<Object, Object> getRight) {
         this.getRight = getRight;
+        return this;
     }
     
     /**
-     * Default method used when extracting data from node
-     * @param node node to extract data from
-     * @return extracted data
+     * Implementation of Function that takes in a value during construction
      */
-    private Object getDataValue(Object node) {
-        try {
-            Field data = node.getClass().getDeclaredField(dataName);
-            data.setAccessible(true);
-            return data.get(node);
-            
+    private static abstract class ValueFunction implements Function<Object, Object> {
+        private String value;
+        
+        public ValueFunction(String value) {
+            this.value = value;
         }
-        catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
+        
+        public String getValue() {
+            return value;
         }
-        throw new IllegalArgumentException("Exception when accessing data of node. Make sure data variable name "
-            + dataName + " is spelled correctly.");
-    }
-    
-    /**
-     * Default method used when extracting left child from node
-     * @param node node to extract left child from
-     * @return extracted left child
-     */
-    private Object getLeftValue(Object node) {
-        try {
-            Field left = node.getClass().getDeclaredField(leftChildName);
-            left.setAccessible(true);
-            return left.get(node);
-            
-        }
-        catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
-        throw new IllegalArgumentException("Exception when accessing data of node. Make sure left child variable name "
-            + leftChildName + " is spelled correctly.");
-    }
-    
-    /**
-     * Default method used when extracting right child from node
-     * @param node node to extract right child from
-     * @return extracted right child
-     */
-    private Object getRightValue(Object node) {
-        try {
-            Field right = node.getClass().getDeclaredField(rightChildName);
-            right.setAccessible(true);
-            return right.get(node);
-            
-        }
-        catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
-        throw new IllegalArgumentException("Exception when accessing data of node. Make sure right child variable name "
-            + rightChildName + " is spelled correctly.");
     }
     
     /**
@@ -608,7 +659,7 @@ public class BinaryTreeViewer {
         for (int REPEATS = 0; REPEATS < 400; REPEATS++) {
             bst = add(bst, (short) random.nextInt());
         }
-        new BinaryTreeViewer().display(bst, 1920, 900);
+        new BinaryTreeViewer().setDataMethod("getData").setLeftChildMethod("getLeft()").display(bst, 1920, 900);
     }
     
     private static <T extends Comparable<? super T>> BSTNode<T> add(BSTNode<T> root, T value) {
