@@ -1,7 +1,7 @@
 # BinaryTreeViewer
 Draw binary trees using Swing
 
+Javadoc: https://creativitry.github.io/BinaryTreeViewer/
+
 Todo:
-* Fix fraction comparison bug
 * Make tree zoomable/scrollable
-* Add javadoc website
