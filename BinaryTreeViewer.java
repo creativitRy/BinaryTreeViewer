@@ -8,7 +8,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
-import java.util.Random;
 import java.util.TreeMap;
 import java.util.function.Function;
 
@@ -18,9 +17,17 @@ import java.util.function.Function;
  * @author Gahwon Lee
  */
 public class BinaryTreeViewer {
-    // width and height of nodes
+    /**
+     * Minimum width of each node
+     */
     public static final double MIN_WIDTH = 20;
+    /**
+     * Height of node
+     */
     public static final double HEIGHT = 20;
+    /**
+     * Maximum height of edge
+     */
     public static final double MAX_HEIGHT_SEPARATION = 80;
     
     // functions to call to extract data
@@ -48,9 +55,9 @@ public class BinaryTreeViewer {
      * Constructs a Binary Tree Viewer by parsing these instance variables (can be
      * private)
      * <p>
-     * Data is parsed from the instance variable {@code dataName},
      * left child is parsed from the instance variable {@code left},
      * right child is parsed from the instance variable {@code right}
+     * @param dataName Data is parsed from this instance variable
      */
     public BinaryTreeViewer(String dataName) {
         this(dataName, "left", "right");
@@ -60,9 +67,9 @@ public class BinaryTreeViewer {
      * Constructs a Binary Tree Viewer by parsing these instance variables (can be
      * private)
      * <p>
-     * Data is parsed from the instance variable {@code data},
-     * left child is parsed from the instance variable {@code leftChildName},
-     * right child is parsed from the instance variable {@code rightChildName}
+     * Data is parsed from the instance variable {@code data}
+     * @param leftChildName  left child is parsed from this instance variable
+     * @param rightChildName right child is parsed from this instance variable
      */
     public BinaryTreeViewer(String leftChildName, String rightChildName) {
         this("data", leftChildName, rightChildName);
@@ -71,10 +78,9 @@ public class BinaryTreeViewer {
     /**
      * Constructs a Binary Tree Viewer by parsing these instance variables (can be
      * private)
-     * <p>
-     * Data is parsed from the instance variable {@code dataName},
-     * left child is parsed from the instance variable {@code leftChildName},
-     * right child is parsed from the instance variable {@code rightChildName}
+     * @param dataName       Data is parsed from this instance variable
+     * @param leftChildName  left child is parsed from this instance variable
+     * @param rightChildName right child is parsed from this instance variable
      */
     public BinaryTreeViewer(String dataName, String leftChildName, String rightChildName) {
         setDataVariable(dataName);
@@ -152,7 +158,6 @@ public class BinaryTreeViewer {
         TreeMap<Fraction, DrawableNode> nodes = new TreeMap<>();
         int maxDepth = parseTree(nodes, rootNode, new Fraction(0, 1), new Fraction(2048, 1),
             1, null, g);
-        System.out.println(nodes);
         double offsetX = 0;
         double startX = 0;
         double deltaX = (nodes.size() > 20) ? 1 : 1.5;
@@ -373,7 +378,7 @@ public class BinaryTreeViewer {
             else if (num < den)
                 gcd = gcd(den, num);
             else
-                return new Fraction(1, 1);
+                gcd = 1;
             
             return new Fraction(this.num / gcd, this.den / gcd);
         }
@@ -644,79 +649,5 @@ public class BinaryTreeViewer {
      */
     private int doubleToInt(double d) {
         return (int) Math.round(d);
-    }
-    
-    /*
-    TODO: DELETE CODE BELOW
-     */
-    
-    public static void main(String[] args) {
-        BSTNode<Character> node = new BSTNode<>(new BSTNode<>(new BSTNode<>('A'), 'H', new BSTNode<>('N')), 'T', new BSTNode<>(new BSTNode<>('S'), 'K', new BSTNode<>('!')));
-        new BinaryTreeViewer("data", "left", "right").display(node);
-        
-        BSTNode<Short> bst = null;
-        Random random = new Random();
-        for (int REPEATS = 0; REPEATS < 400; REPEATS++) {
-            bst = add(bst, (short) random.nextInt());
-        }
-        new BinaryTreeViewer().setDataMethod("getData").setLeftChildMethod("getLeft()").display(bst, 1920, 900);
-    }
-    
-    private static <T extends Comparable<? super T>> BSTNode<T> add(BSTNode<T> root, T value) {
-        if (root == null)
-            return new BSTNode<>(value);
-        
-        int compare = root.data.compareTo(value);
-        if (compare < 0)
-            root.left = add(root.left, value);
-        else if (compare > 0)
-            root.right = add(root.right, value);
-        return root;
-    }
-    
-    private static class BSTNode<E extends Comparable<? super E>> {
-        private E data;
-        private BSTNode<E> left;
-        private BSTNode<E> right;
-        
-        public BSTNode() {
-            this(null);
-        }
-        
-        public BSTNode(E initValue) {
-            this(null, initValue, null);
-        }
-        
-        public BSTNode(BSTNode<E> initLeft,
-                       E initValue,
-                       BSTNode<E> initRight) {
-            data = initValue;
-            left = initLeft;
-            right = initRight;
-        }
-        
-        public E getData() {
-            return data;
-        }
-        
-        public BSTNode<E> getLeft() {
-            return left;
-        }
-        
-        public BSTNode<E> getRight() {
-            return right;
-        }
-        
-        public void setData(E theNewValue) {
-            data = theNewValue;
-        }
-        
-        public void setLeft(BSTNode<E> theNewLeft) {
-            left = theNewLeft;
-        }
-        
-        public void setRight(BSTNode<E> theNewRight) {
-            right = theNewRight;
-        }
     }
 }
