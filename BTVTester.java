@@ -33,9 +33,9 @@ public class BTVTester {
             return new BSTNode<>(value);
         
         int compare = root.data.compareTo(value);
-        if (compare < 0)
+        if (compare > 0)
             root.left = add(root.left, value);
-        else if (compare > 0)
+        else if (compare < 0)
             root.right = add(root.right, value);
         return root;
     }

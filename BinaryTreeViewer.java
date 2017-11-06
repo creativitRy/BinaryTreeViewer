@@ -93,7 +93,7 @@ public class BinaryTreeViewer {
      * @param rootNode root node of the tree
      */
     public void display(Object rootNode) {
-        display(rootNode, 960, 540);
+        display(rootNode, 1280, 720);
     }
     
     /**
@@ -114,7 +114,7 @@ public class BinaryTreeViewer {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setStroke(new BasicStroke(1.1f));
         
-        frame = new JFrame("Drawing Panel");
+        frame = new JFrame("Binary Tree Viewer");
         frame.setResizable(false);
         frame.getContentPane().add(panel);
         frame.pack();
