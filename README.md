@@ -6,3 +6,4 @@ Javadoc: https://creativitry.github.io/BinaryTreeViewer/
 Todo:
 * Make tree zoomable/scrollable
 * Ability to save image
+* Stop the thread until JFrame is closed
